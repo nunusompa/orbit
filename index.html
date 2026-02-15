@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>軽量(願望)ホワイトボード</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="toolbar">
+        <button id="penBtn" class="active">✏️ ペン</button>
+        <button id="eraserBtn">🧹 消しゴム</button>
+        <button id="rectEraseBtn">🔲 範囲削除</button>
+
+        <div class="divider"></div>
+
+        <input type="color" id="colorPicker" value="#000000" title="ペンの色">
+        <input type="range" id="brushSize" min="1" max="50" value="5" title="ペンの太さ">
+
+        <div class="divider"></div>
+
+        <button id="undoBtn">↩️ Undo</button>
+
+        <div class="divider"></div>
+
+        <button id="exportBtn">💾 エクスポート</button>
+        <button id="importBtn">📁 インポート</button>
+        <input type="file" id="importFile" accept=".wbel" style="display: none;">
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="whiteboard"></canvas>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
