@@ -91,48 +91,52 @@ function calculateBBox(points, padding) {
 // ==========================================
 // 5. マウス操作と描画ロジック
 // ==========================================
+// 共通の座標取得関数
+function getPoint(e) {
+    const rect = canvas.getBoundingClientRect();
+    // スクロール分や要素の位置を差し引いてキャンバス内の相対座標を計算
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
 
-// マウスのボタンが押された時の処理（操作開始）
+// --- 以下、各関数内の書き換え ---
+
 function startInteraction(e) {
     isInteracting = true;
+    const pos = getPoint(e); // 座標取得
+
     if (currentMode === 'pen') {
-        // ペン描画の開始
-        currentPoints = [{ x: e.offsetX, y: e.offsetY }];
+        currentPoints = [{ x: pos.x, y: pos.y }];
         ctx.strokeStyle = colorPicker.value;
         ctx.lineWidth = brushSize.value;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
-        ctx.moveTo(e.offsetX, e.offsetY);
+        ctx.moveTo(pos.x, pos.y);
     } else if (currentMode === 'eraser') {
-        // ピンポイント消しゴムの実行
-        eraseAt(e.offsetX, e.offsetY);
+        eraseAt(pos.x, pos.y);
     } else if (currentMode === 'rectErase') {
-        // 矩形消しゴムの開始位置を記録
-        rectStart = { x: e.offsetX, y: e.offsetY };
+        rectStart = { x: pos.x, y: pos.y };
     }
 }
 
-// マウスを動かしている時の処理（操作中）
 function interact(e) {
     if (!isInteracting) return;
+    const pos = getPoint(e); // 座標取得
 
     if (currentMode === 'pen') {
-        // ペンの軌跡を画面にリアルタイム描画し、座標を保存
-        const x = e.offsetX;
-        const y = e.offsetY;
-        currentPoints.push({ x, y });
-        ctx.lineTo(x, y);
+        currentPoints.push({ x: pos.x, y: pos.y });
+        ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
     } else if (currentMode === 'eraser') {
-        // ドラッグ中も連続して消しゴムを実行
-        eraseAt(e.offsetX, e.offsetY);
+        eraseAt(pos.x, pos.y);
     } else if (currentMode === 'rectErase') {
-        // 矩形選択範囲をリアルタイムに描画して視覚的フィードバックを与える
-        redraw(); // 過去の描画を復元して、赤い矩形が軌跡を残さないようにする
-        const width = e.offsetX - rectStart.x;
-        const height = e.offsetY - rectStart.y;
-        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)'; // 半透明の赤
+        redraw();
+        const width = pos.x - rectStart.x;
+        const height = pos.y - rectStart.y;
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
         ctx.strokeStyle = 'rgba(255, 0, 0, 0.8)';
         ctx.lineWidth = 1;
         ctx.fillRect(rectStart.x, rectStart.y, width, height);
@@ -140,46 +144,43 @@ function interact(e) {
     }
 }
 
-// マウスのボタンを離した、または画面外に出た時の処理（操作終了）
 function stopInteraction(e) {
     if (!isInteracting) return;
     isInteracting = false;
+    const pos = getPoint(e); // 座標取得
 
     if (currentMode === 'pen' && currentPoints.length > 0) {
-        // ペン操作終了時：イベントログに「描画(D)」イベントを記録する
-        // ペンの太さに応じた余白を持たせてBBoxを計算
         const padding = parseFloat(brushSize.value) / 2 + 5;
         const bbox = calculateBBox(currentPoints, padding);
 
         eventLog.push({
-            type: 'D', // Draw
+            type: 'D',
             timestamp: getTimestamp(),
             id: generateId(),
             color: colorPicker.value,
             width: brushSize.value,
-            bbox: bbox, // 計算したBBoxもログに含める
-            pathString: pointsToBezierPath(currentPoints) // SVG互換のパス文字列に変換
+            bbox: bbox,
+            pathString: pointsToBezierPath(currentPoints)
         });
-        redraw(); // 正規化されたパスで再描画
+        redraw();
     } else if (currentMode === 'rectErase' && rectStart) {
-        // 矩形消しゴム終了時：選択された範囲内の線を消去する処理を呼び出す
-        const rectEnd = { x: e.offsetX, y: e.offsetY };
-        const minX = Math.min(rectStart.x, rectEnd.x);
-        const maxX = Math.max(rectStart.x, rectEnd.x);
-        const minY = Math.min(rectStart.y, rectEnd.y);
-        const maxY = Math.max(rectStart.y, rectEnd.y);
+        const minX = Math.min(rectStart.x, pos.x);
+        const maxX = Math.max(rectStart.x, pos.x);
+        const minY = Math.min(rectStart.y, pos.y);
+        const maxY = Math.max(rectStart.y, pos.y);
 
         eraseInRect(minX, minY, maxX, maxY);
-        rectStart = null; // 状態をリセット
+        rectStart = null;
     }
     currentPoints = [];
 }
 
 // マウスイベントの登録
-canvas.addEventListener('mousedown', startInteraction);
-canvas.addEventListener('mousemove', interact);
-canvas.addEventListener('mouseup', stopInteraction);
-canvas.addEventListener('mouseout', stopInteraction);
+canvas.addEventListener('pointerdown', startInteraction);
+canvas.addEventListener('pointermove', interact);
+canvas.addEventListener('pointerup', stopInteraction);
+canvas.addEventListener('pointerout', stopInteraction);
+canvas.addEventListener('pointercancel', stopInteraction);
 
 // ==========================================
 // 6. 消去（Eraser）ロジック
